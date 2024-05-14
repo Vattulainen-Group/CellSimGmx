@@ -1,0 +1,101 @@
+{
+    "Cell": {
+        "nr_of_particles": {
+            "description": "The total number of particles in the surface membrane.",
+            "value": 180
+        },
+        "initial_packing_shape": {
+            "description": "The initial shape for packing the cells. Currently only allows 'spherical'",
+            "value": "spherical"
+        },
+        "membrane_type": { 
+            "description": "Sets the membrane distribution. Options 'even', 'segmented'. In case of 'segmented' and two beads, generates a half sphere. ",
+            "value": "even"
+        },
+        "membrane_beads": { 
+            "description": "Sets what type of membrane beads are used in the cell. Options: 'M1', 'M1, M2' etc.",
+            "value": "M1, M2"
+        },
+        "junction_beads": { 
+            "description": "Sets what type of junction beads are used in the cell (comma separated). Options: 'off', 'J1', 'J1, J2' etc",
+            "value": "J1"
+        },
+        "junction_bead_ratio": { 
+            "description": "Defines the number of evenly distributed specific junction beads, set as a ratio of the total number of particles. Ignored if 'junction_beads = off'!",
+            "value": 0.1
+        },
+        "cell_radius": {
+            "description": "The radius of a single cell in nm ",
+            "value": 1.85
+        },
+        "nearest_neighbour_springs": {
+            "description": "The amount of neighbours on the surface (membrane) of the cell between which harmonic bonds are defined. Accepts 'off', '1', '2' and any positive integer",
+            "value": "1"
+        }
+    },
+    "Layer": {
+        "nr_of_layers": {
+            "description": "The total number of layers in the system",
+            "value": 1
+        }
+    },
+    "Tissue": {
+        "number_of_cells": {
+            "description": "The number of cells in the system. Note: enable 'simulation_type' as tissue, otherwise this option is ignored.",
+            "value": 4
+        },
+        "tissue_packing": {
+            "description": "The packing configuration of the tissue. Allows 'grid', 'hexagonal', 'monolayer'",
+            "value": "grid"
+        },
+        "packing_attempts": {
+            "description": "When 'disordered' packing is enabled, defines the number of attempts for packing the cells",
+            "value": 200
+        }
+    },
+    "Matrix": {
+        "matrix_on_off": {
+            "description": "Set matrix on or off in simulation",
+            "value": "off"
+        },
+        "matrix_beads": {
+            "description": "Sets what type of matrix beads are used. e.g. 'MX1', 'MX1, MX2'",
+            "value": "MX1"
+        },
+        "nr_of_matrix_layers": {
+            "description": "Sets matrix thickness, i.e. the number of layers",
+            "value": 1
+        },
+        "matrix_position_restraint": {
+            "description": "Sets the x, y, z position restraint force constant of the matrix",
+            "value": 1000
+        }
+    },
+    "Simulation": {
+        "simulation_type": {
+            "description": "Sets the type of simulation, either 'cell' or 'tissue'. In case of 'cell', all tissue options are ignored in the input.JSON",
+            "value": "tissue"
+        },
+        "box_coord_offset": {
+            "description": "Fit the box or include vacuum offset (nm) at the edge (for periodicity). '0' sets the tightest fit, when >0, that value is applied as offset. ",
+            "value": 2
+        },
+        "minimization": {
+            "description": "Sets type of minimization, allows 'steep' and 'cg' for steepest descent and conjugate descent respectively (latter is more stringent)",
+            "value": "cg"
+        },
+        "ensemble": {
+            "description": "Ensemble to run production in. Supports 'NVE', 'NVT', 'NpT'. Automatically equilibrates up to that ensemble",
+            "value": "NVT"
+        },
+        "timestep": {
+            "description": "The timestep used in GMX (picoseconds) for production. Equilibration happens at 20 fs.",
+            "value": 0.04
+        },
+        "number_of_steps": {
+            "description": "Number of steps for equilibration and production (enter as comma separated value). e.g. '25000, 500000'. Supports also '-1' for indefinite runs.",
+            "value": "25000, 50000"
+        }
+    }
+}
+
