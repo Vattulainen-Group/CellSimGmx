@@ -504,6 +504,7 @@ class System:
         #self.construct_system_topology()
         logging.info(f"Topology and subtopologies '{self.__cli_arguments['output_dir']}/system.top' built of the final system ")
         print(f"INFO: All input creation is completed. ")
+        logging.info(f"Number of particles in GRO file: {len(self.particles)}")
 
     def create_topology(self):
         '''Outputs: SYSTEM-{timeprint}.itp file on disk in output dir. '''
@@ -524,7 +525,6 @@ class System:
             #we copy the force field so the force field stays constant for this simulation and we can 
             # trust the results match with the topology
             shutil.copy2(self.__ff_parser.itp_path, f"{self.__cli_arguments['output_dir']}/toppar/forcefield.itp")
-            
 
             coords = [particle.get_coordinates() for particle in self.__particles]
             atomnames = [particle.get_type() for particle in self.__particles]
@@ -590,6 +590,7 @@ class System:
 
         itp.close()
         logging.info(f"Built a cell topology file '{self.__cli_arguments['output_dir']}{self.itpname}' of a single cell. ")
+        logging.info(f"Number of particles in ITP file: {len(coords)}")
         print(f"INFO: Topology generation finished, '{self.__cli_arguments['output_dir']}{self.itpname}' is saved. ")
         
         if self.__cli_arguments['verbose']:
@@ -602,7 +603,6 @@ class System:
         """
                
         matrix_on_off = self.__json_values["matrix_on_off"]
-        simulation_type = self.__json_values["simulation_type"]
         
         with open(f"{self.__cli_arguments['output_dir']}/system.top", "w") as top:
             forcefield =  f"#include \"{self.__cli_arguments['output_dir']}toppar/forcefield.itp\"\n"
