@@ -1,0 +1,69 @@
+; The forcefield definition follows the standard GROMACS formatting of force fields and abides by the .itp standard
+; Note that it would be best if these values were in the scientific notation since this is how GROMACS formats parameters internally. 
+; See also: https://manual.gromacs.org/current/reference-manual/topologies/topology-file-formats.html
+
+; FORCEFIELD ALPHA V0.1 MOCKUP
+
+[ defaults ]
+; nbfunc     comb-rule    gen-pairs  fudgeLJ fudgeQQ
+    1           2          yes          1.0     1.0
+
+[ atomtypes ]
+; name mass   charge   ptype   sigma   epsilon
+   ; membrane beads
+   M1   72       0.0      A      0.0       0.0     ; membrae bead 1
+   M2   72       0.0      A      0.0       0.0     ; membrane bead 2
+   M3   72       0.0      A      0.0       0.0     ; membrane bead 3
+   M4   72       0.0      A      0.0       0.0     ; membrane bead 4   
+   C    72       0.0      A      0.0       0.0     ; center bead around which the membrane is anchored (NOT the nucleus)
+   ; junction beads
+   J1   72       0.0      A      0.0       0.0     ; junction bead 1
+   J2   72       0.0      A      0.0       0.0     ; junction bead 2
+   J3   72       0.0      A      0.0       0.0     ; junction bead 3
+   J4   72       0.0      A      0.0       0.0     ; junction bead 4
+   ; matrix/basement membrane beads
+   MX1  72       0.0      A      0.0       0.0     ; matrix bead 1
+   MX2  72       0.0      A      0.0       0.0     ; matrix bead 2
+   ; cytoplasm beads
+   C1   72       0.0      A      0.0       0.0     ; cytoplasm beads
+
+[ nonbond_params ]
+;  i   j  func sigma epsilon
+   ; interactions between membrane beads
+   M1  M1   1   0.47   3.5 
+   M2  M2   1   0.47   3.5 
+   M1  M2   1   0.47   3.5 
+   ; interactions for junction beads
+   J1  J1   1   0.47   3.5
+   J1  M1   1   0.47   3.5
+   J1  M2   1   0.47   3.5
+   ; interactions between matrix and cell beads
+   M1  MX1   1   0.47   3.5
+   M2  MX1   1   0.47   3.5
+   J1  MX1   1   0.47   3.5
+   J2  MX1   1   0.47   3.5
+   
+   ; interactions between membrane-junction beads
+
+   ; M3 ranges from eps 2.0 - 5.5. Model based on R-bead in Martini 3 (sigma R-R = 0.47)
+   ; nonbonded parameters are excluded by default for single bonds (nrexcl = 1) so there is no point to defining center-membrane LJ interactions
+   ; center-center LJ interactions might be necessary to prevent CELLs from colliding with each other     
+
+[ bondtypes]
+;  i   j  func    r0      fk   
+   ; center to surface bonds
+   C   M1   1     1.85    250     ; minimum force constant before energy leakage (02/10/23)
+   C   M2   1     1.85    500     ; minimum force constant before compressibility is too great
+   C   J1   1     1.85    300 
+   ; surface bondtypes (n-nearest neighbour scheme)
+   M1  M1   1     0.10    500
+   M1  M2   1     0.10    400
+   M2  M2   1     0.10    600
+   J1  J1   1     0.10    300
+   M1  J1   1     0.10    300
+   M1  J2   1     0.10    200
+   M2  J1   1     0.10    250
+   M2  J2   1     0.10    150
+
+; [ pairtypes ] can use this to explicitly set sigma and epsilon for particle interactions at a later stage. Currently unused
+
