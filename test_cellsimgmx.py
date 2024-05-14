@@ -82,6 +82,29 @@ def test_create_system():
 def test_fit_box_around_coords():
     pass
 
+def test_build_gro_file_system():
+    system = System(values, cli_arguments, ff_parser)
+    system.create_system()
+    system.build_gro_file_system()
+    assert len(system.particles) == values['nr_of_particles'] * values['number_of_cells'], "Mismatch in particle counts"
+    assert len(system.cells) == values['number_of_cells'], "Mismatch in particle counts"
+    assert len(system.centered_system_coords) == values['nr_of_particles'] * values['number_of_cells'], "Mismatch in particle counts"
+
+def test_create_topology():
+    system = System(values, cli_arguments, ff_parser)
+    system.create_system()
+    system.build_gro_file_system()
+    system.create_topology()
+    total_particles = values['nr_of_particles'] * values['number_of_cells']
+    coords = [particle.get_coordinates() for particle in system.particles]
+    atomnames = [particle.get_type() for particle in system.particles]
+    cell_ids = [cell.cell_id for cell in system.cells for particle in cell.get_surface_particles()]
+    assert len(coords) == total_particles, "Mismatch in particle counts"
+    assert len(atomnames) == total_particles, "Mismatch in particle counts"
+    assert len(cell_ids) == total_particles, "Mismatch in particle counts"
+    assert len(system.particles) == total_particles, "Mismatch in particle counts"
+
+
 def test_grompp():
     # test if .gro and .top files are created correctly
 
@@ -134,5 +157,7 @@ if __name__ == '__main__':
     test_find_nearest_neighbours()
     test_create_monolayer()
     test_create_system()
-    test_grompp()
+    test_build_gro_file_system()
+    test_create_topology()
+    #test_grompp()
 
