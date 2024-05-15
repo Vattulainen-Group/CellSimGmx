@@ -318,6 +318,11 @@ class Layer:
         
     def get_cells(self) -> list:
         return self.__layer_cells    
+    
+    def shift_layer(self, x_offset, y_offset, z_offset) -> None:
+        '''shifts a layer in x, y, z directions. ''' 
+        for cell in self.__layer_cells:
+            cell.shift_cell(x_offset, y_offset, z_offset)
   
 
 class System:
@@ -356,8 +361,17 @@ class System:
             print(f'Created a system with {len(self.__cells)} cells')
 
         if number_of_layers > 1:
-            # not yet implemented
-            pass
+            shift = 4
+            for i in range(number_of_layers):
+                print(f'Creating layer {i}')
+                layer = Layer(config.layer_id, self.__json_values, self.__cli_arguments, self.__ff_parser)
+                layer.create_monolayer()
+                layer.shift_layer(0,0,shift)
+                shift += 4
+                for cell in layer.get_cells():
+                    self.__cells.append(cell)
+                    for particle in cell.get_surface_particles():
+                        self.__particles.append(particle)
 
     def fit_box_around_coord(self):
         """
@@ -443,7 +457,7 @@ class System:
 
         self.groname = "SYSTEM-{}.gro".format(now.strftime("%H-%M-%S"))
 
-        with open(f"{self.__cli_arguments['output_dir']}/{self.groname}", mode='w') as gro:
+        with open(f"{self.__cli_arguments['output_dir']}{self.groname}", mode='w') as gro:
             gro.write(gro_header)
             gro.write(str(len(self.__particles)) + "\n")
             
@@ -499,7 +513,7 @@ class System:
         gro.close()
         
         logging.info(f"Built a .gro file '{self.__cli_arguments['output_dir']}/{self.groname}' of the final requested system ")
-        print(f"INFO: Coordinate generation finished, '{self.__cli_arguments['output_dir']}/{self.groname}' is saved. ")
+        print(f"INFO: Coordinate generation finished, '{self.__cli_arguments['output_dir']}{self.groname}' is saved. ")
         
         #self.construct_system_topology()
         logging.info(f"Topology and subtopologies '{self.__cli_arguments['output_dir']}/system.top' built of the final system ")
@@ -526,17 +540,15 @@ class System:
             # trust the results match with the topology
             shutil.copy2(self.__ff_parser.itp_path, f"{self.__cli_arguments['output_dir']}/toppar/forcefield.itp")
 
-            coords = [particle.get_coordinates() for particle in self.__particles]
-            atomnames = [particle.get_type() for particle in self.__particles]
-            cell_ids = [cell.cell_id for cell in self.__cells for particle in cell.get_surface_particles()]
-
+            atomnames = [particle.get_type() for particle in self.__cells[0].get_surface_particles()]
+            
             # Write the [moleculetype] directive and the [atoms] directive based on the atomnames dict
             itp.write("\n[ moleculetype ]\n; Name        nrexcl\n  CELL        1\n\n[ atoms ]\n; nr type resnr residue atom cgnr  charge   mass\n")
-            for i, (coord, atomname, cell_id) in enumerate(zip(coords, atomnames, cell_ids)):  
+            for i, (atomname) in enumerate(atomnames):  
                 resname = "CELL"
                 atom_nr = i + 1 
                 mass = self.__ff_parser.atomtypes[atomname]['mass']
-                itp.write(f'  {atom_nr:<3d}  {atomname:<3s}   {cell_id:<3d}    {resname:<3s}    {atomname:<3s}  {atom_nr:<3d} 0.0000  {str(mass):<3s}\n')
+                itp.write(f'  {atom_nr:<3d}  {atomname:<3s}   1    {resname:<3s}    {atomname:<3s}  {atom_nr:<3d} 0.0000  {str(mass):<3s}\n')
                 #itp.write("  {:<3s}  {:<3s}   1    {:<3s}    {:<3s}  {:<3s} 0.0000  {:<3s}\n".format(str(atom_nr), atomname, resname, atomname, str(atom_nr), str(mass)))
 
             # writing [bonds] directive
@@ -544,7 +556,7 @@ class System:
             # do this by comparing the self.atomnames dict to the bondtype dict read from the force field and look for bonds with a C bead in them
             itp.write("\n[ bonds ]\n; i j func   r0   fk\n; center - membrane bonds\n")
             
-            for i, (coord, atomname) in enumerate(zip(coords, atomnames)):
+            for i, (atomname) in enumerate(atomnames):
                 if atomname != 'C': #skip the center bead
                     parsed = False #because of the two if statements required in both dicts, the for loop prints multiple times. Workaround (I am a genius coder ;D)
                     for bond, entry in self.__ff_parser.bondtypes.items():
@@ -590,7 +602,6 @@ class System:
 
         itp.close()
         logging.info(f"Built a cell topology file '{self.__cli_arguments['output_dir']}{self.itpname}' of a single cell. ")
-        logging.info(f"Number of particles in ITP file: {len(coords)}")
         print(f"INFO: Topology generation finished, '{self.__cli_arguments['output_dir']}{self.itpname}' is saved. ")
         
         if self.__cli_arguments['verbose']:
@@ -613,7 +624,7 @@ class System:
                 # matrix_itp = f"#include \"{self.__cli_arguments['output_dir']}/toppar/{self.matrix.itpname}\"\n"
                 # top.write(matrix_itp)
             
-            number_of_cells = self.__json_values["number_of_cells"]
+            number_of_cells = self.__json_values["number_of_cells"] * self.__json_values['nr_of_layers']
             top_info =  f"\n[ system ]\nCellSimGMX system\n\n[ molecules ]\nCELL {number_of_cells}" 
             top.write(top_info)
             #the matrix individual particles are all written to .itp because of posres so there is only

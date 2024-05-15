@@ -75,9 +75,11 @@ def test_create_monolayer():
 def test_create_system():
     system = System(values, cli_arguments, ff_parser)
     system.create_system()
-    total_particles = values['nr_of_particles'] * values['number_of_cells']
+    total_particles = values['nr_of_particles'] * values['number_of_cells'] * values['nr_of_layers']
+    print(f'total particles asked in input: {total_particles}')
+    print(f'actual nr of particles: {len(system.particles)}')
     assert len(system.particles) == total_particles
-    assert len(system.cells) == values['number_of_cells']
+    assert len(system.cells) == values['number_of_cells']* values['nr_of_layers']
 
 def test_fit_box_around_coords():
     pass
@@ -86,16 +88,16 @@ def test_build_gro_file_system():
     system = System(values, cli_arguments, ff_parser)
     system.create_system()
     system.build_gro_file_system()
-    assert len(system.particles) == values['nr_of_particles'] * values['number_of_cells'], "Mismatch in particle counts"
-    assert len(system.cells) == values['number_of_cells'], "Mismatch in particle counts"
-    assert len(system.centered_system_coords) == values['nr_of_particles'] * values['number_of_cells'], "Mismatch in particle counts"
+    assert len(system.particles) == values['nr_of_particles'] * values['number_of_cells']* values['nr_of_layers'], "Mismatch in particle counts"
+    assert len(system.cells) == values['number_of_cells']* values['nr_of_layers'], "Mismatch in particle counts"
+    assert len(system.centered_system_coords) == values['nr_of_particles'] * values['number_of_cells']* values['nr_of_layers'], "Mismatch in particle counts"
 
 def test_create_topology():
     system = System(values, cli_arguments, ff_parser)
     system.create_system()
     system.build_gro_file_system()
     system.create_topology()
-    total_particles = values['nr_of_particles'] * values['number_of_cells']
+    total_particles = values['nr_of_particles'] * values['number_of_cells']* values['nr_of_layers']
     coords = [particle.get_coordinates() for particle in system.particles]
     atomnames = [particle.get_type() for particle in system.particles]
     cell_ids = [cell.cell_id for cell in system.cells for particle in cell.get_surface_particles()]
@@ -159,5 +161,5 @@ if __name__ == '__main__':
     test_create_system()
     test_build_gro_file_system()
     test_create_topology()
-    #test_grompp()
+    test_grompp()
 
