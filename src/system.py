@@ -34,7 +34,7 @@ class Particle:
         self.__epsilon = new_epsilon
 
     def set_coordinates(self, new_coordinates: list) -> None:
-        ''' Takes in an instance of Particle and changes coordinates.'''
+        ''' Takes in an instance of Particle and changes coordinates. Modify ff?'''
         self.__coordinates = new_coordinates
 
     def shift_x(self, x_offset: float) -> None:

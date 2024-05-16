@@ -1,15 +1,21 @@
 # Description: This file contains the tests for the classes in the system.py file.
 import os
 import shutil
+import glob
+
+from settings_parser import CLIParser, JSONParser, ForcefieldParserGMX
 
 from system import Particle
 from system import Cell
 from system import Layer
 from system import System
-from gromacs import Simulation
-from settings_parser import CLIParser, JSONParser, ForcefieldParserGMX
-import config
 
+from gromacs import Simulation
+from gromacs import GromppWrapper
+from gromacs import MDRunWrapper
+from gromacs import ExecuteSimulations
+
+import config
 
 def test_particle_creation():
     p = Particle(1, 'A', 1.0, 1.0, [1.0, 1.0, 1.0])
@@ -129,11 +135,80 @@ def test_grompp():
     grompp_path = f'{output_dir}test_gmx'
     shutil.move(f'{output_dir}{gro_file}', f'{output_dir}test_gmx')
     shutil.move('system.top', 'test_gmx')
-    shutil.move('em.mdp', 'test_gmx')
+    shutil.move('mdps/em.mdp', 'test_gmx')
     
     grompp = f'gmx grompp -p {grompp_path}/system.top -f {grompp_path}/em.mdp -c {grompp_path}/{gro_file}'
     os.system(grompp)
 
+def test_write_mdp_minim():
+    sim = Simulation(cli_arguments, ff_parser, values)
+    sim.write_mdp_minim()
+    path = os.path.join(cli_arguments['output_dir'], 'mdps', 'em.mdp')
+    assert os.path.exists(path)
+
+def test_write_mdp_eq_prod():
+    sim = Simulation(cli_arguments, ff_parser, values)
+    sim.write_mdp_eq_prod()
+    ensemble = values['ensemble']
+    path = os.path.join(cli_arguments['output_dir'], 'mdps', 'NVE_eq.mdp')
+    assert os.path.exists(path)
+
+    if ensemble == 'NVE':
+        path_nve = os.path.join(cli_arguments['output_dir'], 'mdps', 'production.mdp')
+        assert os.path.exists(path_nve)
+    elif ensemble == 'NVT':
+        path_nvt = os.path.join(cli_arguments['output_dir'], 'mdps', 'NVT_eq.mdp')
+        assert os.path.exists(path_nvt)
+        path_nvt_prod = os.path.join(cli_arguments['output_dir'], 'mdps', 'production.mdp')
+        assert os.path.exists(path_nvt_prod)
+    elif ensemble == 'NPT':
+        path_npt = os.path.join(cli_arguments['output_dir'], 'mdps', 'NpT_eq.mdp')
+        path_npt_prod = os.path.join(cli_arguments['output_dir'], 'mdps', 'production.mdp')
+        path_nve = os.path.join(cli_arguments['output_dir'], 'mdps', 'NVT_eq.mdp')
+        assert os.path.exists(path_nve)
+        assert os.path.exists(path_npt)
+        assert os.path.exists(path_npt_prod)
+
+def test_GromppWrapper():
+    # build a system and runs grompp on energy minimization
+    system = System(values, cli_arguments, ff_parser)
+    system.create_system()
+    system.build_gro_file_system()
+    system.create_topology()
+    system.construct_system_topology()
+
+    sim = Simulation(cli_arguments, ff_parser, values)
+    sim.write_mdp_minim()
+
+    def create_directory(sim_path):
+            if not os.path.exists(sim_path):
+                os.makedirs(sim_path)
+
+    init_coord = glob.glob(f'SYSTEM*.gro')[0] if glob.glob(f'SYSTEM*.gro') else None
+    topol = "system.top" #this is hardcoded anyway
+    create_directory("em")
+    GromppWrapper(topol, init_coord, "mdps/em.mdp", "em/em.tpr")
+
+    assert os.path.exists("em/em.tpr")
+
+def test_MDrunWrapper():
+    # run energy minimization
+    MDRunWrapper("em/em")
+
+def test_ExecuteSimulations():
+    system = System(values, cli_arguments, ff_parser)
+    system.create_system()
+    system.build_gro_file_system()
+    system.create_topology()
+    system.construct_system_topology()
+
+    sim = Simulation(cli_arguments, ff_parser, values)
+    sim.write_mdp_minim()
+    sim.write_mdp_eq_prod()
+    execute_sims = ExecuteSimulations()
+
+    
+    
 
 if __name__ == '__main__':
     cli_parser = CLIParser()
@@ -161,5 +236,10 @@ if __name__ == '__main__':
     test_create_system()
     test_build_gro_file_system()
     test_create_topology()
-    test_grompp()
+    #test_grompp()
+    test_write_mdp_minim()
+    test_write_mdp_eq_prod()
+    test_GromppWrapper()
+    test_MDrunWrapper()
+    test_ExecuteSimulations()
 
