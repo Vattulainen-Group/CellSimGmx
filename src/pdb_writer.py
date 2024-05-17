@@ -10,10 +10,14 @@ import os
 from pdb_writer import write_pdb_file
 
 def test_write_pdb_file():
-    atoms = [
-        {'atom_name': 'N', 'atomID': 1, 'resname': 'ALA', 'resid': 1, 'chainID': 'A', 'X': 1.0, 'Y': 2.0, 'Z': 3.0},
-        {'atom_name': 'CA', 'atomID': 2, 'resname': 'ALA', 'resid': 1, 'chainID': 'A', 'X': 2.0, 'Y': 3.0, 'Z': 4.0},
-    ]
+    atoms = []
+    atomID = 1
+    for x in range(3):
+        for y in range(3):
+            for z in range(3):
+                atom = {'atom_name': 'CA', 'atomID': atomID, 'resname': 'ALA', 'resid': 1, 'chainID': 'A', 'X': float(x), 'Y': float(y), 'Z': float(z)}
+                atoms.append(atom)
+                atomID += 1
 
     filename = 'test_output.pdb'
     write_pdb_file(atoms, filename)
