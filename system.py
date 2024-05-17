@@ -270,6 +270,10 @@ class Layer:
 
         config.layer_id += 1
 
+    @property
+    def layer_id(self) -> int:
+        return self._layer_id
+
     def create_monolayer(self):
         nr_of_cells = self._json_values["number_of_cells"]
         nr_of_particles = self._json_values["nr_of_particles"]
@@ -319,6 +323,9 @@ class Layer:
     def get_cells(self) -> list:
         return self.__layer_cells    
     
+    def get_particles(self) -> list:
+        return self._layer_particles
+    
     def shift_layer(self, x_offset, y_offset, z_offset) -> None:
         '''shifts a layer in x, y, z directions. ''' 
         for cell in self.__layer_cells:
@@ -332,7 +339,9 @@ class System:
         self.__ff_parser = ff_parser
         self.__particles = []
         self.__cells = []
+        self.__layers = []
         self.centered_system_coords = {}
+        self.pdb_filename = None
 
     @property
     def particles(self) -> list:
@@ -351,14 +360,15 @@ class System:
         if number_of_layers == 1:
             layer = Layer(config.layer_id, self.__json_values, self.__cli_arguments, self.__ff_parser)
             layer.create_monolayer()
+            self.__layers.append(layer)
 
             for cell in layer.get_cells():
                 self.__cells.append(cell)
                 for particle in cell.get_surface_particles():
                     self.__particles.append(particle)
 
-            print(f'Created a system with {len(self.__particles)} particles')
-            print(f'Created a system with {len(self.__cells)} cells')
+            print(f'Created a system with {len(self.__particles)} particles, {len(self.__cells)} cells and {len(self.__layers)} layers')
+
 
         if number_of_layers > 1:
             shift = 4
@@ -368,6 +378,7 @@ class System:
                 layer.create_monolayer()
                 layer.shift_layer(0,0,shift)
                 shift += 4
+                self.__layers.append(layer)
                 for cell in layer.get_cells():
                     self.__cells.append(cell)
                     for particle in cell.get_surface_particles():
@@ -410,7 +421,7 @@ class System:
         
         centering = True # use to enable or disable centering in the box (useful for debugging)
         
-        ## Centering of the system coordinates, add later:
+        ## Centering of the system coordinates
         total_coords = len(coords) 
         
         #Sums up all coordinates, then divides over the total number of atoms/coordinates...
@@ -519,6 +530,100 @@ class System:
         logging.info(f"Topology and subtopologies '{self.__cli_arguments['output_dir']}/system.top' built of the final system ")
         print(f"INFO: All input creation is completed. ")
         logging.info(f"Number of particles in GRO file: {len(self.particles)}")
+
+  
+    def write_pdb_file(self):
+        now = datetime.datetime.now()
+        self.pdb_filename = f"SYSTEM-{now.strftime('%H-%M-%S')}.pdb"
+        centering = True # use to enable or disable centering in the box (useful for debugging)
+
+        box_coord_offset = self.__json_values["box_coord_offset"] #used for box fitting
+        
+        coords = [particle.get_coordinates() for particle in self.__particles]
+        atomnames = [particle.get_type() for particle in self.__particles]
+        resids = [cell.cell_id for cell in self.__cells for _ in range(len(cell.get_surface_particles()))]
+        chain_ids = [layer.layer_id for layer in self.__layers for _ in range(len(layer.get_particles()))]
+        
+        ## Centering of the system coordinates
+        total_coords = len(coords) 
+        
+        #Sums up all coordinates, then divides over the total number of atoms/coordinates...
+        sum_x = sum(float(coord[0]) for coord in coords)
+        sum_y = sum(float(coord[1]) for coord in coords)
+        sum_z = sum(float(coord[2]) for coord in coords)
+        
+        #... to find geometric center in each Cartesian direction
+        center_x = sum_x / total_coords
+        center_y = sum_y / total_coords
+        center_z = sum_z / total_coords
+        
+        # #calculate the required box size (add offset later, in case of 0, nothing happens)
+        box_size = self.fit_box_around_coord()
+        
+        extra_box_size = (
+            box_size[0] + box_coord_offset,
+            box_size[1] + box_coord_offset,
+            box_size[2] + box_coord_offset
+        )
+
+        # Note: (0,0,0) is recognized as the box origin in GMX, thus need to translate the coordinates based
+        # on the box dimensions. Calculate the translation factor of the positions to the geometric center      
+        trans_x = -(center_x - (extra_box_size[0] / 2))
+        trans_y = -(center_y - (extra_box_size[1] / 2))
+        trans_z = -(center_z - (extra_box_size[2] / 2))
+        
+        # Move the atom coordinates based on the calculated translation factor
+        for atom_index, (coord, atomname) in enumerate(zip(coords, atomnames)):
+            name = atomname
+            x, y, z = coord
+
+            x_translated = x + trans_x
+            y_translated = y + trans_y
+            z_translated = z + trans_z
+                
+            self.centered_system_coords[atom_index] = {
+                "name": name,
+                "coords": [x_translated, y_translated, z_translated],
+                "resid": resids[atom_index],
+                "chain_id": chain_ids[atom_index]
+            }
+        
+        with open(f"{self.__cli_arguments['output_dir']}{self.pdb_filename}", "w") as pdb:
+            if centering == True:
+                logging.info("Centering of System coordinates is enabled!")
+                #take coordinates from translated (centered) dict
+                for atom_index, atom_data in self.centered_system_coords.items():
+                    atomname = atom_data["name"]
+                    coords = atom_data["coords"]
+                    x, y, z = coords
+                    resid = atom_data["resid"]
+                    chain_id = atom_data["chain_id"]
+                    atom_number = atom_index + 1
+                    #look for atomnames beginning with MX, this is Matrix res
+                    if re.match(r'^MX[1-5]$', atomname):
+                        resname = "MX  "
+                    else:
+                        # rest will be CELL
+                        resname = "CELL"
+                    line = f"ATOM  {atom_number:<5d} {atomname:<4s} {resname:<3s}   {chain_id:<4d}  {resid:>4d}   {x:>8.3f}{y:>8.3f}{z:>8.3f}\n"
+                    pdb.write(line)
+
+            if centering == False:
+                logging.info("Centering of System coordinates is disabled!")
+                #take coordinates from non-translated dict
+                for atom_index, (coord, atomname, resid, chain_id) in enumerate(zip(coords, atomnames, resids, chain_ids)):
+                    atomname = atomname
+                    x, y, z = coord
+                    atom_number = atom_index + 1
+                    #look for atomnames beginning with MX, this is Matrix res
+                    if re.match(r'^MX[1-5]$', atomname):
+                        resname = "MX  "
+                    else:
+                        # rest will be CELL
+                        resname = "CELL"
+                    
+                    line = f"ATOM  {atom_number:<5d} {atomname:<4s} {resname:<3s}   {chain_id:<4d}  {resid:>4d}   {x:>8.3f}{y:>8.3f}{z:>8.3f}\n"
+                    pdb.write(line)
 
     def create_topology(self):
         '''Outputs: SYSTEM-{timeprint}.itp file on disk in output dir. '''

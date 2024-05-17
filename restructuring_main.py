@@ -58,6 +58,7 @@ def main():
     system = System(values, cli_arguments, ff_parser)
     system.create_system()
     system.build_gro_file_system()
+    system.write_pdb_file()
     system.create_topology()
     system.construct_system_topology()
 
@@ -65,7 +66,7 @@ def main():
     sim = Simulation(cli_arguments, ff_parser, values)  # creating an instance creates minimisation, equilibration and production mdp files
     sim.write_mdp_minim()
     sim.write_mdp_eq_prod()
-    execute_sims = ExecuteSimulations()
+    #execute_sims = ExecuteSimulations()
 
     print(f"CellSimGMX finished. '{log_handler.baseFilename}' has been saved.")
 

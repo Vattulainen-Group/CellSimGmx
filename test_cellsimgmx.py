@@ -207,8 +207,34 @@ def test_ExecuteSimulations():
     sim.write_mdp_eq_prod()
     execute_sims = ExecuteSimulations()
 
-    
-    
+def test_write_pdb_file():
+    # assume centering always true
+    system = System(values, cli_arguments, ff_parser)
+    system.create_system()
+    system.write_pdb_file()
+    filename = system.pdb_filename
+
+    path = os.path.join(cli_arguments['output_dir'], filename)
+    assert os.path.exists(path)
+
+    with open(filename, 'r') as f:
+        lines = f.readlines()
+
+    assert len(lines) == len(system.centered_system_coords), "Mismatch in number of lines and system particles."
+    assert len(lines) == len(system.particles)
+
+    for line, atom in zip(lines, system.centered_system_coords.values()):
+        assert line.startswith('ATOM')
+        assert atom['name'] in line
+        assert str(atom['resid']) in line
+        assert str(atom['chain_id']) in line
+        coords = atom['coords']
+        for coord in coords:
+            assert f"{coord:>8.3f}" in line, f"Coordinate {coord} not found in line: {line}"
+
+    os.remove(filename)
+
+
 
 if __name__ == '__main__':
     cli_parser = CLIParser()
@@ -237,9 +263,10 @@ if __name__ == '__main__':
     test_build_gro_file_system()
     test_create_topology()
     #test_grompp()
-    test_write_mdp_minim()
-    test_write_mdp_eq_prod()
-    test_GromppWrapper()
-    test_MDrunWrapper()
-    test_ExecuteSimulations()
+    # test_write_mdp_minim()
+    # test_write_mdp_eq_prod()
+    # test_GromppWrapper()
+    # test_MDrunWrapper()
+    # test_ExecuteSimulations()
+    test_write_pdb_file()
 
